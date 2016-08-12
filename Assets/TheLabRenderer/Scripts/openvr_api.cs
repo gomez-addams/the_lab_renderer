@@ -7,6 +7,8 @@
 
 using System;
 using System.Runtime.InteropServices;
+
+#if !UNITY_WSA
 using Valve.VRRenderingPackage;
 
 namespace Valve.VRRenderingPackage
@@ -3936,3 +3938,4 @@ public class OpenVR
 
 }
 
+#endif

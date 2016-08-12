@@ -4,4 +4,16 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
+  m_Scenes:
+  - enabled: 1
+    path: Assets/TheLabRenderer/Examples/4_spots.unity
+  - enabled: 0
+    path: Assets/TheLabRenderer/Examples/bad_cases.unity
+  - enabled: 0
+    path: Assets/TheLabRenderer/Examples/directional.unity
+  - enabled: 0
+    path: Assets/TheLabRenderer/Examples/fog.unity
+  - enabled: 0
+    path: Assets/TheLabRenderer/Examples/lightmap_override.unity
+  - enabled: 0
+    path: Assets/TheLabRenderer/Examples/point_light.unity

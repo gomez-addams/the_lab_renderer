@@ -74,10 +74,25 @@ public class ValveCamera : MonoBehaviour
 	public bool m_cullLightsFromEditorCamera = false;
 	public bool m_hideAllValveMaterials = false;
 
-	//---------------------------------------------------------------------------------------------------------------------------------------------------
-	public static bool HasCommandLineArg( string argumentName )
+#if UNITY_WSA
+    static string[] bogusArgs = new string[] {
+        "bogus_program_launch_path",
+        "-msaa", "0",
+        //"-noaq",
+        "-aqoverride", "1",
+        "-vrdebug",
+        //"-noflush",
+    };
+#endif
+
+    //---------------------------------------------------------------------------------------------------------------------------------------------------
+    public static bool HasCommandLineArg( string argumentName )
 	{
-		string[] args = System.Environment.GetCommandLineArgs();
+#if UNITY_WSA
+        string[] args = bogusArgs;
+#else
+        string[] args = System.Environment.GetCommandLineArgs();
+#endif
 		for ( int i = 0; i < args.Length; i++ )
 		{
 			if ( args[ i ].Equals( argumentName ) )
@@ -91,7 +106,11 @@ public class ValveCamera : MonoBehaviour
 
 	public static int GetCommandLineArgValue( string argumentName, int nDefaultValue )
 	{
+#if UNITY_WSA
+        string[] args = bogusArgs;
+#else
 		string[] args = System.Environment.GetCommandLineArgs();
+#endif
 		for ( int i = 0; i < args.Length; i++ )
 		{
 			if ( args[ i ].Equals( argumentName ) )
@@ -110,7 +129,11 @@ public class ValveCamera : MonoBehaviour
 
 	public static float GetCommandLineArgValue( string argumentName, float flDefaultValue )
 	{
+#if UNITY_WSA
+        string[] args = bogusArgs;
+#else
 		string[] args = System.Environment.GetCommandLineArgs();
+#endif
 		for ( int i = 0; i < args.Length; i++ )
 		{
 			if ( args[ i ].Equals( argumentName ) )
@@ -201,7 +224,7 @@ public class ValveCamera : MonoBehaviour
 
 		CreateAssets();
 
-		#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 		{
 			if ( !Application.isPlaying )
 			{
@@ -220,19 +243,19 @@ public class ValveCamera : MonoBehaviour
 				EditorApplication.update += MyEditorUpdate;
 			}
 		}
-		#endif
+#endif
 	}
 
 	void OnDisable()
 	{
-		#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 		{
 			if ( !EditorApplication.isPlaying )
 			{
 				EditorApplication.update -= MyEditorUpdate;
 			}
 		}
-		#endif
+#endif
 	}
 
 	void OnDestroy()
@@ -277,11 +300,11 @@ public class ValveCamera : MonoBehaviour
 				m_shadowDepthTexture.Create();
 				m_shadowDepthTexture.SetGlobalShaderProperty( "g_tShadowBuffer" );
 				//Shader.SetGlobalTexture( "g_tShadowBuffer", m_shadowDepthTexture );
-				#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 				{
 					EditorUtility.SetDirty( this );
 				}
-				#endif
+#endif
 			}
 			else
 			{
@@ -304,7 +327,7 @@ public class ValveCamera : MonoBehaviour
 		}
 
 		// Shadows vis shader and material
-		#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 		{
 			if ( !m_shaderShadowVis )
 			{
@@ -324,7 +347,7 @@ public class ValveCamera : MonoBehaviour
 				}
 			}
 		}
-		#endif
+#endif
 	}
 
 	// Creates an inactive camera for rendering support data
@@ -385,8 +408,11 @@ public class ValveCamera : MonoBehaviour
 
 	void ValveGLFlushIfNotReprojecting()
 	{
-		// Don't flush while reprojecting
-		if ( Valve.VRRenderingPackage.OpenVR.Compositor != null )
+#if UNITY_WSA
+        // Do something for HoloLens?
+#else
+        // Don't flush while reprojecting
+        if ( Valve.VRRenderingPackage.OpenVR.Compositor != null )
 		{
 			var timing = new Valve.VRRenderingPackage.Compositor_FrameTiming();
 			timing.m_nSize = ( uint )System.Runtime.InteropServices.Marshal.SizeOf( typeof( Valve.VRRenderingPackage.Compositor_FrameTiming ) );
@@ -395,7 +421,7 @@ public class ValveCamera : MonoBehaviour
 			if ( timing.m_nNumFramePresents > 1 )
 				return;
 		}
-
+#endif
 		ValveGLFlush();
 	}
 
@@ -404,7 +430,7 @@ public class ValveCamera : MonoBehaviour
 	//---------------------------------------------------------------------------------------------------------------------------------------------------
 	void MyEditorUpdate()
 	{
-		#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 		{
 			if ( !EditorApplication.isPlaying )
 			{
@@ -435,7 +461,7 @@ public class ValveCamera : MonoBehaviour
 				}
 			}
 		}
-		#endif
+#endif
 	}
 
 	// NOTE: We want to call ValveShadowBufferRender() in LateUpdate() since that is before WaitGetPoses() gets called internally
@@ -658,15 +684,19 @@ public class ValveCamera : MonoBehaviour
 		int nOldQualityLevel = m_nAdaptiveQualityLevel;
 		float flSingleFrameMs = ( VRDevice.refreshRate > 0.0f ) ? ( 1000.0f / VRDevice.refreshRate ) : ( 1000.0f / 90.0f ); // Assume 90 fps
 
-		// Render low res means adaptive quality needs to scale back target to free up gpu cycles
-		bool bRenderLowRes = false;
+#if UNITY_WSA
+        bool bRenderLowRes = true;
+#else
+        // Render low res means adaptive quality needs to scale back target to free up gpu cycles
+        bool bRenderLowRes = false;
 		if ( Valve.VRRenderingPackage.OpenVR.Compositor != null )
 		{
 			bRenderLowRes = Valve.VRRenderingPackage.OpenVR.Compositor.ShouldAppRenderWithLowResources();
 		}
+#endif
 
-		// Thresholds
-		float flQualityTargetScale = bRenderLowRes ? 0.75f : 1.0f;
+        // Thresholds
+        float flQualityTargetScale = bRenderLowRes ? 0.75f : 1.0f;
 		float flLowThresholdMs = 0.7f * flSingleFrameMs * flQualityTargetScale;
 		float flExtrapolationThresholdMs = 0.85f * flSingleFrameMs * flQualityTargetScale;
 		float flHighThresholdMs = 0.9f * flSingleFrameMs * flQualityTargetScale;
@@ -770,8 +800,15 @@ public class ValveCamera : MonoBehaviour
 
 		nAdaptiveQualityLevel = Mathf.Clamp( nAdaptiveQualityLevel, 0, m_adaptiveQualityNumLevels - 1 );
 
-		// Force on interleaved reprojection for bin 0 which is just a replica of bin 1 with reprojection enabled
-		float flAdditionalViewportScale = 1.0f;
+#if UNITY_WSA
+        float flAdditionalViewportScale = 1.0f;
+        if (nAdaptiveQualityLevel == 0)
+        {
+            flAdditionalViewportScale = 0.8f;
+        }
+#else
+        // Force on interleaved reprojection for bin 0 which is just a replica of bin 1 with reprojection enabled
+        float flAdditionalViewportScale = 1.0f;
 		if ( ( Valve.VRRenderingPackage.OpenVR.Compositor != null ) &&
 			 ( Valve.VRRenderingPackage.OpenVR.System != null ) &&
 			 ( !IsDisplayOnDesktop() ) )
@@ -808,8 +845,9 @@ public class ValveCamera : MonoBehaviour
 				flAdditionalViewportScale = 0.8f;
 			}
 		}
+#endif
 
-		if ( VRSettings.enabled )
+        if ( VRSettings.enabled )
 		{
 			VRSettings.renderScale = flRenderTargetScale;
 			VRSettings.renderViewportScale = ( m_adaptiveQualityRenderScaleArray[ nAdaptiveQualityLevel ] / flRenderTargetScale ) * flAdditionalViewportScale;
@@ -963,7 +1001,7 @@ public class ValveCamera : MonoBehaviour
 		// Get camera
 		Camera camera = gameObject.GetComponent< Camera >();
 
-		#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 		{
 			if ( !EditorApplication.isPlaying )
 			{
@@ -974,7 +1012,7 @@ public class ValveCamera : MonoBehaviour
 				}
 			}
 		}
-		#endif
+#endif
 
 		// Calculate camera frustum planes
 		Plane[] cameraFrustumPlanes = GeometryUtility.CalculateFrustumPlanes( camera );
@@ -990,7 +1028,7 @@ public class ValveCamera : MonoBehaviour
 				continue;
 
 			// Don't cull in editor scene window
-			#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 			{
 				if ( !EditorApplication.isPlaying )
 				{
@@ -1000,7 +1038,7 @@ public class ValveCamera : MonoBehaviour
 					}
 				}
 			}
-			#endif
+#endif
 
 			// Init to false
 			vl.m_bInCameraFrustum = false;
@@ -1448,17 +1486,17 @@ public class ValveCamera : MonoBehaviour
 		}
 
 		// Time
-		#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 		{
 			Shader.SetGlobalFloat( "g_flTime", Time.realtimeSinceStartup );
 			//Debug.Log( "Time " + Time.realtimeSinceStartup );
 		}
-		#else
+#else
 		{
 			Shader.SetGlobalFloat( "g_flTime", Time.timeSinceLevelLoad );
 			//Debug.Log( "Time " + Time.timeSinceLevelLoad );
 		}
-		#endif
+#endif
 
 		// PCF 3x3 Shadows
 		if ( m_shadowDepthTexture )
@@ -1487,19 +1525,24 @@ public class ValveCamera : MonoBehaviour
 	{
 		if ( !m_isDisplayOnDesktopCached )
 		{
+#if UNITY_WSA
+            m_isDisplayOnDesktop = false;
+            m_isDisplayOnDesktopCached = true;
+#else
 			if ( Valve.VRRenderingPackage.OpenVR.System != null )
 			{
 				m_isDisplayOnDesktop = Valve.VRRenderingPackage.OpenVR.System.IsDisplayOnDesktop();
 				m_isDisplayOnDesktopCached = true;
 			}
-		}
+#endif
+        }
 
-		return m_isDisplayOnDesktop;
+        return m_isDisplayOnDesktop;
 	}
 }
 
 //-------------------------------------------------------------------------------------------------------------------------------------------------------------
-#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 class ValveSceneAutoRendering : EditorWindow
 {
 	public static bool s_bSceneAutoRender = false;
@@ -1551,7 +1594,7 @@ class ValveSceneAutoRendering : EditorWindow
 #endif
 
 //---------------------------------------------------------------------------------------------------------------------------------------------------
-#if ( UNITY_EDITOR )
+#if (UNITY_EDITOR)
 [CustomEditor( typeof( ValveCamera ) )]
 public class ValveCameraInspector : Editor
 {
